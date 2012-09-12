@@ -21,12 +21,12 @@ Recorder.start(Paths, Points);
 
 To stop, either `Recorder.cancel()`, or call
 ```js
-Recorder.save(name)
+Recorder.save('name')
 ```
 
 When you want to re-run your recording, simply call
 ```js
-Recorder.replay(name, Paths, Points);
+Recorder.replay('name', Paths, Points);
 ```
 
 And the same set of changes should happen to the collections recorded.
@@ -38,6 +38,8 @@ Tips and Tricks
 
 Ensure the recorder has write access to the `Recordings` collection. ie. if you are on `auth`, do something like:
 
+```js
 Recordings.allow({
   insert: function() { return true; }
 })
+```
