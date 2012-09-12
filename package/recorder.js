@@ -7,9 +7,14 @@ if (Meteor.is_server) {
 }
 
 if (Meteor.is_client) {
-  Meteor.subscribe('recordings');
+  Recorder = {};
+  Meteor.deps.add_reactive_variable(Recorder, 'ready', false);
   
-  Recorder = {
+  Meteor.subscribe('recordings', function() {
+    Recorder.ready.set(true);
+  });
+  
+  _.extend(Recorder, {
     start: function(/* collections */) {
       var startTime = new Date();
       Recorder.currentRecording = []
@@ -58,43 +63,65 @@ if (Meteor.is_client) {
       Recorder.cancel();
     },
     
-  replay: function(name /*, collections */) {
-      var recording = Recordings.findOne({name: name});
+    replay: function(name /*, collections, fn */) {
+      // record the collections so we can find them by name
+      var args = Array.prototype.slice.apply(arguments);
+      var fn = args.pop();
+      if (!_.isFunction(fn)) { // put it back
+        fn = _.identity;
+        args.push(fn);
+      }
       
+      _.each(args.slice(1), function(collection) {
+        collections[collection._name] = collection;
+      });
+      
+      var recording = Recordings.findOne({name: name});
       if (!recording) {
-        console.log("No such recording: ' + name + '")
-        return;
+        return fn("No such recording: '" + name + "'");
       }
       
       var idMap = {};
       var collections = {}; 
-      _.each(Array.prototype.slice.apply(arguments).slice(1), function(collection) {
-        collections[collection._name] = collection;
-      });
+      var awaiting = 0;
+      
+      var done = function() {
+        awaiting -= 1;
+        if (awaiting === 0 && fn)
+          fn();
+      };
       
       _.each(recording.actions, function(action) {
-        var collection = collections[action.collection];
+        var name = action.collection;
+        var collection = collections[name];
+        // just look for a collection named Name
+        if (!collection) {
+          name = name.charAt(0).toUpperCase() + name.slice(1);
+          collection = collections[name] = window[name];
+        }
         
         if (!collection) {
           console.log("Can't apply change to collection '" + action.collection + "', we don't know about it.");
           return;
         }
         
+        awaiting += 1;
+        // wait for the right amount of time, then do the action
         Meteor.setTimeout(function() {
           if (action.type === 'added') {
             var origId = action.doc._id;
             delete action.doc._id;
-            idMap[origId] = collection.insert(action.doc);
+            idMap[origId] = collection.insert(action.doc, done);
             
           } else if (action.type === 'changed') {
             var origId = action.doc._id;
             delete action.doc._id;
-            collection.update(idMap[origId], {$set: action.doc});
+            collection.update(idMap[origId], {$set: action.doc}, done);
           } else if (action.type === 'removed') {
-            collection.remove(idMap[action.doc._id]);
+            collection.remove(idMap[action.doc._id], done);
           }
         }, action.timeOffset);
-        });
+      });
     }
-  }
+  });
 }
