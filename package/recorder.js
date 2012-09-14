@@ -15,14 +15,14 @@ if (Meteor.is_client) {
   });
   
   _.extend(Recorder, {
-    start: function(/* collections */) {
+    start: function(/* collectionVariableNames */) {
       var startTime = new Date();
       Recorder.currentRecording = []
       Recorder.handles = [];
       
-      _.each(arguments, function(collection) {
+      _.each(arguments, function(collectionVarName) {
         function addRecord(record) {
-          record.collection = collection._name;
+          record.collection = collectionVarName;
           record.timeOffset = new Date() - startTime;
           
           if ('_meteorRawData' in record.doc)
@@ -31,7 +31,9 @@ if (Meteor.is_client) {
           Recorder.currentRecording.push(record);
         }
         
-        var handle = collection.find().observe({
+        // FIXME -- is there any alternate way to find the collection?
+        var handle = window[collectionVarName].find().observe({
+          _suppress_initial: true,
           'added': function(addedDoc) {
             addRecord({type: 'added', doc: addedDoc});
           },
@@ -58,31 +60,17 @@ if (Meteor.is_client) {
       name = name || Meteor.uuid();
       console.log('Recording Complete, ' + Recorder.currentRecording.length + ' actions observed. Saving as ' + name);
       
-      console.log(Recorder.currentRecording);
       Recordings.insert({name: name, actions: Recorder.currentRecording});
       Recorder.cancel();
     },
     
-    replay: function(name /*, collections, fn */) {
-      // record the collections so we can find them by name
-      var args = Array.prototype.slice.apply(arguments);
-      var fn = args.pop();
-      if (!_.isFunction(fn)) { // put it back
-        fn = _.identity;
-        args.push(fn);
-      }
-      
-      _.each(args.slice(1), function(collection) {
-        collections[collection._name] = collection;
-      });
-      
+    replay: function(name, fn) {
       var recording = Recordings.findOne({name: name});
       if (!recording) {
         return fn("No such recording: '" + name + "'");
       }
       
       var idMap = {};
-      var collections = {}; 
       var awaiting = 0;
       
       var done = function() {
@@ -92,13 +80,7 @@ if (Meteor.is_client) {
       };
       
       _.each(recording.actions, function(action) {
-        var name = action.collection;
-        var collection = collections[name];
-        // just look for a collection named Name
-        if (!collection) {
-          name = name.charAt(0).toUpperCase() + name.slice(1);
-          collection = collections[name] = window[name];
-        }
+        var collection = window[action.collection];
         
         if (!collection) {
           console.log("Can't apply change to collection '" + action.collection + "', we don't know about it.");

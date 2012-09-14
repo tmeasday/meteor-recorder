@@ -13,10 +13,10 @@ mrt add recorder
 Usage
 -----
 
-To record, start the `Recorder` with the collections that you are interested in:
+To record, start the `Recorder` with the names of the collections that you are interested in:
 
 ```js
-Recorder.start(Paths, Points);
+Recorder.start(Paths, 'Points');
 ```
 
 To stop, either `Recorder.cancel()`, or call
@@ -42,12 +42,7 @@ Have a nice day.
 Tips and Tricks
 ---------------
 
-You'll need to either pass the collections in that the replay operates on:
-```js
-Recorder.replay('name', Paths, Points);
-```
-
-Or you'll have to make sure that the record can find your collections. For now that means you'll need to name them "correctly":
+Or you'll have to make sure that the record can find your collections. For now that means they'll need to be globally available in the `window` object: 
 ```js
 Paths = new Meteor.Collection('paths');
 ```
@@ -62,4 +57,6 @@ Recordings.allow({
 
 TODO
 ----
-Find somewhere to store collections
+- Find somewhere to store collections
+- More exciting replayer?
+- Deal with changes to existing objects, not just new ones
