@@ -3,6 +3,8 @@ Meteor Recorder
 
 This is a work in progress, feel free to give it a go!
 
+To see it in action, head to [Sketch](http://sketch.meteor.com)
+
 Install
 -------
 
