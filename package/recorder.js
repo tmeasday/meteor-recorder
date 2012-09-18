@@ -9,6 +9,7 @@ if (Meteor.is_server) {
 if (Meteor.is_client) {
   Recorder = {};
   Meteor.deps.add_reactive_variable(Recorder, 'ready', false);
+  Meteor.deps.add_reactive_variable(Recorder, 'recording', false);
   
   Meteor.subscribe('recordings', function() {
     Recorder.ready.set(true);
@@ -19,6 +20,7 @@ if (Meteor.is_client) {
       var startTime = new Date();
       Recorder.currentRecording = []
       Recorder.handles = [];
+      Recorder.recording.set(true);
       
       _.each(arguments, function(collectionVarName) {
         function addRecord(record) {
@@ -54,6 +56,7 @@ if (Meteor.is_client) {
     cancel: function() {
       _.invoke(Recorder.handles, 'stop');
       Recorder.handles = [];
+      Recorder.recording.set(false)
     },
     
     save: function(name) {
